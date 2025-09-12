@@ -93,7 +93,7 @@ export default function Header({ collapsed, setCollapsed }) {
               <div className="font-medium">
                 {user?.profile?.fullName || user?.username}
               </div>
-              <div className="text-xs text-gray-500">Universitet Admin</div>
+              <div className="text-xs mt-[-20px] text-gray-500">Universitet Admin</div>
             </div>
           </Space>
         </Dropdown>

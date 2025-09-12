@@ -11,6 +11,7 @@ import {
 import { Line, Bar, Pie } from "recharts";
 import { useGetDashboardQuery } from "../store/api/adminApi";
 import LoadingSpinner from "../components/LoadingSpinner";
+import React from "react";
 
 const { Title, Text } = Typography;
 

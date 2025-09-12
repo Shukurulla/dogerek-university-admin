@@ -8,10 +8,25 @@ export const adminApi = baseApi.injectEndpoints({
       providesTags: ["Dashboard"],
     }),
 
+    // Faculties
+    getFaculties: builder.query({
+      query: () => "/admin/faculties",
+      providesTags: ["Faculties"],
+    }),
+
+    // Groups
+    getGroups: builder.query({
+      query: (facultyId) => ({
+        url: "/admin/groups",
+        params: { facultyId },
+      }),
+      providesTags: ["Groups"],
+    }),
+
     // Faculty Admins
     getFacultyAdmins: builder.query({
       query: () => "/admin/faculty-admins",
-      providesTags: ["Faculty"],
+      providesTags: ["FacultyAdmin"],
     }),
 
     createFacultyAdmin: builder.mutation({
@@ -20,7 +35,7 @@ export const adminApi = baseApi.injectEndpoints({
         method: "POST",
         body: data,
       }),
-      invalidatesTags: ["Faculty"],
+      invalidatesTags: ["FacultyAdmin", "Dashboard"],
     }),
 
     updateFacultyAdmin: builder.mutation({
@@ -29,7 +44,7 @@ export const adminApi = baseApi.injectEndpoints({
         method: "PUT",
         body: data,
       }),
-      invalidatesTags: ["Faculty"],
+      invalidatesTags: ["FacultyAdmin"],
     }),
 
     deleteFacultyAdmin: builder.mutation({
@@ -37,10 +52,10 @@ export const adminApi = baseApi.injectEndpoints({
         url: `/admin/faculty-admin/${id}`,
         method: "DELETE",
       }),
-      invalidatesTags: ["Faculty"],
+      invalidatesTags: ["FacultyAdmin", "Dashboard"],
     }),
 
-    // Reports
+    // Clubs
     getClubs: builder.query({
       query: (params) => ({
         url: "/admin/clubs",
@@ -49,6 +64,7 @@ export const adminApi = baseApi.injectEndpoints({
       providesTags: ["Club"],
     }),
 
+    // Students
     getStudents: builder.query({
       query: (params) => ({
         url: "/admin/students",
@@ -57,6 +73,7 @@ export const adminApi = baseApi.injectEndpoints({
       providesTags: ["Student"],
     }),
 
+    // Attendance
     getAttendance: builder.query({
       query: (params) => ({
         url: "/admin/attendance",
@@ -71,13 +88,15 @@ export const adminApi = baseApi.injectEndpoints({
         url: "/admin/sync-hemis",
         method: "POST",
       }),
-      invalidatesTags: ["Student", "Dashboard"],
+      invalidatesTags: ["Student", "Dashboard", "Faculties", "Groups"],
     }),
   }),
 });
 
 export const {
   useGetDashboardQuery,
+  useGetFacultiesQuery,
+  useGetGroupsQuery,
   useGetFacultyAdminsQuery,
   useCreateFacultyAdminMutation,
   useUpdateFacultyAdminMutation,

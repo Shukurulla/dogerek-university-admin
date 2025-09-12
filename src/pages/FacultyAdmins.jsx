@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Table,
   Button,
@@ -11,6 +11,9 @@ import {
   Tag,
   Popconfirm,
   Card,
+  Switch,
+  Tooltip,
+  Avatar,
 } from "antd";
 import {
   PlusOutlined,
@@ -18,9 +21,17 @@ import {
   DeleteOutlined,
   PhoneOutlined,
   MailOutlined,
+  UserOutlined,
+  LockOutlined,
+  IdcardOutlined,
+  BankOutlined,
+  KeyOutlined,
+  EyeOutlined,
+  EyeInvisibleOutlined,
 } from "@ant-design/icons";
 import {
   useGetFacultyAdminsQuery,
+  useGetFacultiesQuery,
   useCreateFacultyAdminMutation,
   useUpdateFacultyAdminMutation,
   useDeleteFacultyAdminMutation,
@@ -30,36 +41,66 @@ import LoadingSpinner from "../components/LoadingSpinner";
 export default function FacultyAdmins() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAdmin, setEditingAdmin] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
   const [form] = Form.useForm();
 
-  const { data, isLoading } = useGetFacultyAdminsQuery();
+  // API queries
+  const { data: adminsData, isLoading: adminsLoading } =
+    useGetFacultyAdminsQuery();
+  const { data: facultiesData, isLoading: facultiesLoading } =
+    useGetFacultiesQuery();
   const [createAdmin, { isLoading: creating }] =
     useCreateFacultyAdminMutation();
   const [updateAdmin, { isLoading: updating }] =
     useUpdateFacultyAdminMutation();
   const [deleteAdmin] = useDeleteFacultyAdminMutation();
 
-  const admins = data?.data || [];
+  const admins = adminsData?.data || [];
+  const faculties = facultiesData?.data || [];
 
   const handleSubmit = async (values) => {
     try {
+      // Phone number formatting
+      if (values.phone) {
+        values.phone = values.phone.replace(/\D/g, "");
+        if (values.phone.startsWith("998")) {
+          values.phone = values.phone.substring(3);
+        }
+      }
+
       if (editingAdmin) {
-        const result = await updateAdmin({
+        // Update admin
+        const updateData = {
           id: editingAdmin._id,
-          ...values,
-        }).unwrap();
+          username: values.username,
+          fullName: values.fullName,
+          phone: values.phone,
+          email: values.email,
+          facultyId: values.facultyId,
+          isActive: values.isActive !== undefined ? values.isActive : true,
+        };
+
+        // Only send password if it was changed
+        if (values.password && values.password.length >= 6) {
+          updateData.password = values.password;
+        }
+
+        const result = await updateAdmin(updateData).unwrap();
         if (result.success) {
           message.success("Fakultet admin yangilandi");
         }
       } else {
+        // Create new admin
         const result = await createAdmin(values).unwrap();
         if (result.success) {
           message.success("Fakultet admin qo'shildi");
         }
       }
+
       setIsModalOpen(false);
       form.resetFields();
       setEditingAdmin(null);
+      setShowPassword(false);
     } catch (error) {
       message.error(error.data?.message || "Xatolik yuz berdi");
     }
@@ -67,12 +108,23 @@ export default function FacultyAdmins() {
 
   const handleEdit = (record) => {
     setEditingAdmin(record);
+
+    // Parse phone number
+    let phoneNumber = record.profile?.phone || "";
+    if (phoneNumber.startsWith("+998")) {
+      phoneNumber = phoneNumber.substring(4);
+    } else if (phoneNumber.startsWith("998")) {
+      phoneNumber = phoneNumber.substring(3);
+    }
+
     form.setFieldsValue({
       username: record.username,
       fullName: record.profile?.fullName,
-      phone: record.profile?.phone?.replace("+998", ""),
+      phone: phoneNumber,
       email: record.profile?.email,
       facultyId: record.faculty?.id,
+      isActive: record.isActive !== false,
+      password: "", // Empty password field for editing
     });
     setIsModalOpen(true);
   };
@@ -84,28 +136,44 @@ export default function FacultyAdmins() {
         message.success("Fakultet admin o'chirildi");
       }
     } catch (error) {
-      message.error("Xatolik yuz berdi");
+      message.error(error.data?.message || "Xatolik yuz berdi");
     }
   };
 
   const columns = [
     {
-      title: "F.I.O",
-      dataIndex: ["profile", "fullName"],
-      key: "fullName",
-      render: (text) => <span className="font-medium">{text}</span>,
-    },
-    {
-      title: "Username",
-      dataIndex: "username",
-      key: "username",
-      render: (text) => <Tag color="blue">{text}</Tag>,
+      title: "Admin",
+      key: "admin",
+      render: (_, record) => (
+        <div className="flex items-center gap-3">
+          <Avatar
+            size="large"
+            icon={<UserOutlined />}
+            className="bg-gradient-to-r from-blue-500 to-purple-500"
+          />
+          <div>
+            <div className="font-medium text-base">
+              {record.profile?.fullName}
+            </div>
+            <div className="flex items-center gap-2 text-gray-500">
+              <IdcardOutlined className="text-xs" />
+              <span className="text-sm">{record.username}</span>
+            </div>
+          </div>
+        </div>
+      ),
     },
     {
       title: "Fakultet",
-      dataIndex: ["faculty", "name"],
       key: "faculty",
-      render: (text) => <Tag color="green">{text}</Tag>,
+      render: (_, record) => (
+        <div className="flex items-center gap-2">
+          <BankOutlined className="text-gray-400" />
+          <Tag color="blue" className="m-0">
+            {record.faculty?.name || "Belgilanmagan"}
+          </Tag>
+        </div>
+      ),
     },
     {
       title: "Kontakt",
@@ -113,16 +181,16 @@ export default function FacultyAdmins() {
       render: (_, record) => (
         <Space direction="vertical" size="small">
           {record.profile?.phone && (
-            <span className="text-gray-600">
-              <PhoneOutlined className="mr-2" />
+            <span className="text-gray-600 flex items-center gap-2">
+              <PhoneOutlined className="text-gray-400" />
               {record.profile.phone
                 .replace("+998", "+998 ")
                 .replace(/(\d{2})(\d{3})(\d{2})(\d{2})/, "$1 $2-$3-$4")}
             </span>
           )}
           {record.profile?.email && (
-            <span className="text-gray-600">
-              <MailOutlined className="mr-2" />
+            <span className="text-gray-600 flex items-center gap-2">
+              <MailOutlined className="text-gray-400" />
               {record.profile.email}
             </span>
           )}
@@ -134,10 +202,16 @@ export default function FacultyAdmins() {
       dataIndex: "isActive",
       key: "status",
       render: (isActive) => (
-        <Tag color={isActive ? "success" : "default"}>
-          {isActive ? "Faol" : "Nofaol"}
+        <Tag color={isActive !== false ? "success" : "default"}>
+          {isActive !== false ? "Faol" : "Nofaol"}
         </Tag>
       ),
+    },
+    {
+      title: "Yaratilgan",
+      dataIndex: "createdAt",
+      key: "createdAt",
+      render: (date) => new Date(date).toLocaleDateString("uz"),
     },
     {
       title: "Amallar",
@@ -145,34 +219,32 @@ export default function FacultyAdmins() {
       width: 120,
       render: (_, record) => (
         <Space>
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-            className="text-blue-500 hover:text-blue-600"
-          />
+          <Tooltip title="Tahrirlash">
+            <Button
+              type="text"
+              icon={<EditOutlined />}
+              onClick={() => handleEdit(record)}
+              className="text-blue-500 hover:text-blue-600"
+            />
+          </Tooltip>
           <Popconfirm
             title="O'chirishni tasdiqlaysizmi?"
+            description="Bu amalni ortga qaytarib bo'lmaydi"
             onConfirm={() => handleDelete(record._id)}
-            okText="Ha"
-            cancelText="Yo'q"
+            okText="Ha, o'chirish"
+            cancelText="Bekor qilish"
+            okButtonProps={{ danger: true }}
           >
-            <Button type="text" danger icon={<DeleteOutlined />} />
+            <Tooltip title="O'chirish">
+              <Button type="text" danger icon={<DeleteOutlined />} />
+            </Tooltip>
           </Popconfirm>
         </Space>
       ),
     },
   ];
 
-  // Mock fakultetlar - backend dan kelishi kerak
-  const faculties = [
-    { id: 1, name: "Matematika fakulteti" },
-    { id: 2, name: "Fizika fakulteti" },
-    { id: 3, name: "Informatika fakulteti" },
-    { id: 4, name: "Tarix fakulteti" },
-  ];
-
-  if (isLoading) return <LoadingSpinner size="large" />;
+  if (adminsLoading || facultiesLoading) return <LoadingSpinner size="large" />;
 
   return (
     <div className="space-y-6">
@@ -185,6 +257,7 @@ export default function FacultyAdmins() {
             onClick={() => {
               setEditingAdmin(null);
               form.resetFields();
+              setShowPassword(false);
               setIsModalOpen(true);
             }}
             size="large"
@@ -192,6 +265,56 @@ export default function FacultyAdmins() {
           >
             Yangi admin
           </Button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <Card className="border border-blue-200 bg-blue-50">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-gray-600 text-sm">Jami adminlar</div>
+                <div className="text-2xl font-bold text-blue-600 mt-1">
+                  {admins.length}
+                </div>
+              </div>
+              <UserOutlined className="text-3xl text-blue-400" />
+            </div>
+          </Card>
+
+          <Card className="border border-green-200 bg-green-50">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-gray-600 text-sm">Faol adminlar</div>
+                <div className="text-2xl font-bold text-green-600 mt-1">
+                  {admins.filter((a) => a.isActive !== false).length}
+                </div>
+              </div>
+              <UserOutlined className="text-3xl text-green-400" />
+            </div>
+          </Card>
+
+          <Card className="border border-purple-200 bg-purple-50">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-gray-600 text-sm">Fakultetlar</div>
+                <div className="text-2xl font-bold text-purple-600 mt-1">
+                  {faculties.length}
+                </div>
+              </div>
+              <BankOutlined className="text-3xl text-purple-400" />
+            </div>
+          </Card>
+
+          <Card className="border border-orange-200 bg-orange-50">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-gray-600 text-sm">Nofaol adminlar</div>
+                <div className="text-2xl font-bold text-orange-600 mt-1">
+                  {admins.filter((a) => a.isActive === false).length}
+                </div>
+              </div>
+              <UserOutlined className="text-3xl text-orange-400" />
+            </div>
+          </Card>
         </div>
 
         <Table
@@ -209,13 +332,21 @@ export default function FacultyAdmins() {
 
       <Modal
         title={
-          editingAdmin ? "Fakultet adminni tahrirlash" : "Yangi fakultet admin"
+          <div className="flex items-center gap-2">
+            {editingAdmin ? <EditOutlined /> : <PlusOutlined />}
+            <span>
+              {editingAdmin
+                ? "Fakultet adminni tahrirlash"
+                : "Yangi fakultet admin"}
+            </span>
+          </div>
         }
         open={isModalOpen}
         onCancel={() => {
           setIsModalOpen(false);
           setEditingAdmin(null);
           form.resetFields();
+          setShowPassword(false);
         }}
         footer={null}
         width={600}
@@ -232,34 +363,60 @@ export default function FacultyAdmins() {
             rules={[
               { required: true, message: "Username kiritilishi shart!" },
               { min: 3, message: "Kamida 3 ta belgi" },
+              {
+                pattern: /^[a-zA-Z0-9_]+$/,
+                message: "Faqat lotin harflari, raqamlar va _ belgilari",
+              },
             ]}
           >
             <Input
+              prefix={<IdcardOutlined className="text-gray-400" />}
               placeholder="Username"
-              disabled={editingAdmin}
               size="large"
             />
           </Form.Item>
 
-          {!editingAdmin && (
-            <Form.Item
-              name="password"
-              label="Parol"
-              rules={[
-                { required: true, message: "Parol kiritilishi shart!" },
-                { min: 6, message: "Kamida 6 ta belgi" },
-              ]}
-            >
-              <Input.Password placeholder="Parol" size="large" />
-            </Form.Item>
-          )}
+          <Form.Item
+            name="password"
+            label={
+              <span>
+                Parol
+                {editingAdmin && (
+                  <span className="text-gray-500 text-xs ml-2">
+                    (o'zgartirmasangiz bo'sh qoldiring)
+                  </span>
+                )}
+              </span>
+            }
+            rules={
+              !editingAdmin
+                ? [
+                    { required: true, message: "Parol kiritilishi shart!" },
+                    { min: 6, message: "Kamida 6 ta belgi" },
+                  ]
+                : [{ min: 6, message: "Kamida 6 ta belgi" }]
+            }
+          >
+            <Input.Password
+              prefix={<LockOutlined className="text-gray-400" />}
+              placeholder={editingAdmin ? "Yangi parol (ixtiyoriy)" : "Parol"}
+              size="large"
+              iconRender={(visible) =>
+                visible ? <EyeOutlined /> : <EyeInvisibleOutlined />
+              }
+            />
+          </Form.Item>
 
           <Form.Item
             name="fullName"
             label="F.I.O"
             rules={[{ required: true, message: "F.I.O kiritilishi shart!" }]}
           >
-            <Input placeholder="To'liq ism familiya" size="large" />
+            <Input
+              prefix={<UserOutlined className="text-gray-400" />}
+              placeholder="To'liq ism familiya"
+              size="large"
+            />
           </Form.Item>
 
           <Form.Item
@@ -267,10 +424,17 @@ export default function FacultyAdmins() {
             label="Fakultet"
             rules={[{ required: true, message: "Fakultet tanlanishi shart!" }]}
           >
-            <Select placeholder="Fakultetni tanlang" size="large">
+            <Select
+              placeholder="Fakultetni tanlang"
+              size="large"
+              showSearch
+              filterOption={(input, option) =>
+                option.children.toLowerCase().includes(input.toLowerCase())
+              }
+            >
               {faculties.map((f) => (
                 <Select.Option key={f.id} value={f.id}>
-                  {f.name}
+                  {f.name} ({f.studentCount} student)
                 </Select.Option>
               ))}
             </Select>
@@ -288,6 +452,7 @@ export default function FacultyAdmins() {
           >
             <Input
               addonBefore="+998"
+              prefix={<PhoneOutlined className="text-gray-400" />}
               placeholder="90 123 45 67"
               maxLength={9}
               size="large"
@@ -299,8 +464,22 @@ export default function FacultyAdmins() {
             label="Email"
             rules={[{ type: "email", message: "Email formati noto'g'ri" }]}
           >
-            <Input placeholder="email@example.com" size="large" />
+            <Input
+              prefix={<MailOutlined className="text-gray-400" />}
+              placeholder="email@example.com"
+              size="large"
+            />
           </Form.Item>
+
+          {editingAdmin && (
+            <Form.Item name="isActive" label="Status" valuePropName="checked">
+              <Switch
+                checkedChildren="Faol"
+                unCheckedChildren="Nofaol"
+                defaultChecked
+              />
+            </Form.Item>
+          )}
 
           <Form.Item className="mb-0">
             <Space className="w-full justify-end">
@@ -309,6 +488,7 @@ export default function FacultyAdmins() {
                   setIsModalOpen(false);
                   setEditingAdmin(null);
                   form.resetFields();
+                  setShowPassword(false);
                 }}
               >
                 Bekor qilish
