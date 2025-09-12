@@ -1,0 +1,103 @@
+import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { Layout, Button, Dropdown, Avatar, Space, Badge } from "antd";
+import {
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  UserOutlined,
+  LogoutOutlined,
+  BellOutlined,
+  SyncOutlined,
+} from "@ant-design/icons";
+import { logout } from "../store/api/authApi";
+import { useSyncHemisDataMutation } from "../store/api/adminApi";
+import { message } from "antd";
+
+const { Header: AntHeader } = Layout;
+
+export default function Header({ collapsed, setCollapsed }) {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { user } = useSelector((state) => state.auth);
+  const [syncHemis, { isLoading: syncing }] = useSyncHemisDataMutation();
+
+  const handleLogout = () => {
+    dispatch(logout());
+    navigate("/login");
+    message.success("Tizimdan chiqdingiz");
+  };
+
+  const handleSync = async () => {
+    try {
+      const result = await syncHemis().unwrap();
+      if (result.success) {
+        message.success(result.message || "Hemis ma'lumotlari sinxronlandi");
+      }
+    } catch (error) {
+      message.error("Sinxronlashda xatolik yuz berdi");
+    }
+  };
+
+  const userMenuItems = [
+    {
+      key: "profile",
+      icon: <UserOutlined />,
+      label: "Profil",
+      onClick: () => navigate("/profile"),
+    },
+    {
+      type: "divider",
+    },
+    {
+      key: "logout",
+      icon: <LogoutOutlined />,
+      label: "Chiqish",
+      onClick: handleLogout,
+    },
+  ];
+
+  return (
+    <AntHeader className="bg-white px-6 flex items-center justify-between shadow-sm sticky top-0 z-10">
+      <div className="flex items-center gap-4">
+        <Button
+          type="text"
+          icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+          onClick={() => setCollapsed(!collapsed)}
+          className="text-lg"
+        />
+
+        <Button
+          type="primary"
+          icon={<SyncOutlined spin={syncing} />}
+          onClick={handleSync}
+          loading={syncing}
+          className="gradient-primary border-0"
+        >
+          Hemis Sync
+        </Button>
+      </div>
+
+      <Space size="large">
+        <Badge count={5} size="small">
+          <Button
+            type="text"
+            shape="circle"
+            icon={<BellOutlined className="text-lg" />}
+          />
+        </Badge>
+
+        <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" arrow>
+          <Space className="cursor-pointer hover:bg-gray-50 px-3 py-1 rounded-lg transition-colors">
+            <Avatar icon={<UserOutlined />} className="bg-primary" />
+            <div className="text-left">
+              <div className="font-medium">
+                {user?.profile?.fullName || user?.username}
+              </div>
+              <div className="text-xs text-gray-500">Universitet Admin</div>
+            </div>
+          </Space>
+        </Dropdown>
+      </Space>
+    </AntHeader>
+  );
+}
