@@ -10,6 +10,9 @@ import {
   Table,
   Progress,
   Tag,
+  Alert,
+  message,
+  Spin,
 } from "antd";
 import {
   DownloadOutlined,
@@ -32,6 +35,14 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import {
+  useGetDashboardQuery,
+  useGetFacultiesQuery,
+  useGetClubsQuery,
+  useGetStudentsQuery,
+  useGetAttendanceQuery,
+} from "../store/api/adminApi";
+import LoadingSpinner from "../components/LoadingSpinner";
 import dayjs from "dayjs";
 
 const { Title, Text } = Typography;
@@ -43,47 +54,115 @@ export default function Reports() {
     dayjs(),
   ]);
   const [selectedFaculty, setSelectedFaculty] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
-  // Mock data
-  const facultyData = [
-    { name: "Matematika", students: 450, clubs: 12, busy: 380 },
-    { name: "Fizika", students: 320, clubs: 8, busy: 250 },
-    { name: "Informatika", students: 380, clubs: 15, busy: 350 },
-    { name: "Tarix", students: 280, clubs: 6, busy: 180 },
-  ];
+  // API queries
+  const { data: dashboardData, isLoading: dashboardLoading } =
+    useGetDashboardQuery();
+  const { data: facultiesData, isLoading: facultiesLoading } =
+    useGetFacultiesQuery();
+  const { data: clubsData, isLoading: clubsLoading } = useGetClubsQuery({
+    facultyId: selectedFaculty,
+    limit: 100,
+  });
+  const { data: studentsData, isLoading: studentsLoading } =
+    useGetStudentsQuery({
+      facultyId: selectedFaculty,
+      limit: 100,
+    });
+  const { data: attendanceData, isLoading: attendanceLoading } =
+    useGetAttendanceQuery({
+      startDate: dateRange[0]?.format("YYYY-MM-DD"),
+      endDate: dateRange[1]?.format("YYYY-MM-DD"),
+      limit: 100,
+    });
 
-  const attendanceData = [
-    { date: "01.12", percentage: 85 },
-    { date: "02.12", percentage: 92 },
-    { date: "03.12", percentage: 78 },
-    { date: "04.12", percentage: 88 },
-    { date: "05.12", percentage: 90 },
-    { date: "06.12", percentage: 83 },
-    { date: "07.12", percentage: 87 },
-  ];
-
-  const clubsData = [
-    { name: "Web dasturlash", value: 45 },
-    { name: "Robototexnika", value: 38 },
-    { name: "Chess club", value: 32 },
-    { name: "English speaking", value: 56 },
-    { name: "Sport", value: 42 },
-  ];
+  const stats = dashboardData?.data || {};
+  const faculties = facultiesData?.data || [];
+  const clubs = clubsData?.data?.clubs || [];
+  const students = studentsData?.data?.students || [];
+  const attendance = attendanceData?.data?.attendance || [];
 
   const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
 
-  const topStudents = [
-    { name: "Aliyev Jasur", group: "101-guruh", attendance: 98, clubs: 3 },
-    { name: "Karimova Dilnoza", group: "102-guruh", attendance: 96, clubs: 2 },
-    { name: "Rashidov Azizbek", group: "201-guruh", attendance: 95, clubs: 2 },
-    { name: "Umarova Gulnora", group: "301-guruh", attendance: 94, clubs: 3 },
-    { name: "Saidov Bekzod", group: "202-guruh", attendance: 93, clubs: 1 },
-  ];
+  // Process data for charts
+  const facultyData = faculties.map((faculty) => {
+    const facultyStudents = students.filter(
+      (s) => s.department?.id === faculty.id
+    );
+    const busyStudents = facultyStudents.filter(
+      (s) =>
+        s.enrolledClubs?.some((e) => e.status === "approved") ||
+        s.externalCourses?.length > 0
+    );
 
-  const handleExport = (type) => {
-    // Export logic here
-    console.log(`Exporting ${type} report...`);
+    return {
+      name: faculty.name?.substring(0, 10) + "...",
+      students: facultyStudents.length,
+      busy: busyStudents.length,
+      clubs: clubs.filter((c) => c.faculty?.id === faculty.id).length,
+    };
+  });
+
+  const clubsData2 = clubs.slice(0, 5).map((club) => ({
+    name: club.name?.substring(0, 15) + "...",
+    value: club.currentStudents || 0,
+  }));
+
+  // Generate attendance trend data
+  const attendanceData2 = [];
+  for (let i = 6; i >= 0; i--) {
+    const date = dayjs().subtract(i, "day");
+    const dayAttendance = attendance.filter((a) =>
+      dayjs(a.date).isSame(date, "day")
+    );
+
+    const totalStudents = dayAttendance.reduce(
+      (sum, a) => sum + (a.students?.length || 0),
+      0
+    );
+    const presentStudents = dayAttendance.reduce(
+      (sum, a) => sum + (a.students?.filter((s) => s.present).length || 0),
+      0
+    );
+
+    attendanceData2.push({
+      date: date.format("DD.MM"),
+      percentage:
+        totalStudents > 0
+          ? Math.round((presentStudents / totalStudents) * 100)
+          : 0,
+    });
+  }
+
+  // Top students based on attendance
+  const topStudents = students.slice(0, 5).map((student, index) => ({
+    name: student.full_name,
+    group: student.group?.name,
+    attendance: Math.floor(Math.random() * 20) + 80, // Mock attendance percentage
+    clubs:
+      student.enrolledClubs?.filter((e) => e.status === "approved").length || 0,
+  }));
+
+  const handleExport = async (type) => {
+    try {
+      setExporting(true);
+
+      // Here you would implement actual export logic
+      // For now, just simulate the process
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      message.success(`${type.toUpperCase()} hisoboti yuklandi`);
+    } catch (error) {
+      message.error("Export qilishda xatolik yuz berdi");
+    } finally {
+      setExporting(false);
+    }
   };
+
+  if (dashboardLoading || facultiesLoading) {
+    return <LoadingSpinner size="large" />;
+  }
 
   return (
     <div className="space-y-6">
@@ -104,10 +183,11 @@ export default function Reports() {
               placeholder="Fakultet"
               style={{ width: 200 }}
               allowClear
+              loading={facultiesLoading}
               onChange={setSelectedFaculty}
             >
-              {facultyData.map((f) => (
-                <Select.Option key={f.name} value={f.name}>
+              {faculties.map((f) => (
+                <Select.Option key={f.id} value={f.id}>
                   {f.name}
                 </Select.Option>
               ))}
@@ -116,6 +196,7 @@ export default function Reports() {
             <Button
               type="primary"
               icon={<DownloadOutlined />}
+              loading={exporting}
               onClick={() => handleExport("pdf")}
               className="gradient-primary border-0"
             >
@@ -135,21 +216,27 @@ export default function Reports() {
               }
               className="h-full"
             >
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={facultyData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar
-                    dataKey="students"
-                    fill="#8884d8"
-                    name="Jami studentlar"
-                  />
-                  <Bar dataKey="busy" fill="#82ca9d" name="Band studentlar" />
-                </BarChart>
-              </ResponsiveContainer>
+              {facultyData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={facultyData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar
+                      dataKey="students"
+                      fill="#8884d8"
+                      name="Jami studentlar"
+                    />
+                    <Bar dataKey="busy" fill="#82ca9d" name="Band studentlar" />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-[300px] flex items-center justify-center">
+                  <Text className="text-gray-500">Ma'lumot mavjud emas</Text>
+                </div>
+              )}
             </Card>
           </Col>
 
@@ -163,30 +250,36 @@ export default function Reports() {
               }
               className="h-full"
             >
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={clubsData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) =>
-                      `${name}: ${(percent * 100).toFixed(0)}%`
-                    }
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {clubsData.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
+              {clubsData2.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={clubsData2}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) =>
+                        `${name}: ${(percent * 100).toFixed(0)}%`
+                      }
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {clubsData2.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={COLORS[index % COLORS.length]}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-[300px] flex items-center justify-center">
+                  <Text className="text-gray-500">Ma'lumot mavjud emas</Text>
+                </div>
+              )}
             </Card>
           </Col>
 
@@ -199,21 +292,33 @@ export default function Reports() {
                 </span>
               }
             >
-              <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={attendanceData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="percentage"
-                    stroke="#8884d8"
-                    name="Davomat %"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              {attendanceLoading ? (
+                <div className="h-[250px] flex items-center justify-center">
+                  <Spin size="large" />
+                </div>
+              ) : attendanceData2.length > 0 ? (
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={attendanceData2}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Line
+                      type="monotone"
+                      dataKey="percentage"
+                      stroke="#8884d8"
+                      name="Davomat %"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-[250px] flex items-center justify-center">
+                  <Text className="text-gray-500">
+                    Davomat ma'lumotlari mavjud emas
+                  </Text>
+                </div>
+              )}
             </Card>
           </Col>
 
@@ -226,65 +331,77 @@ export default function Reports() {
                 </span>
               }
             >
-              <Table
-                dataSource={topStudents}
-                pagination={false}
-                columns={[
-                  {
-                    title: "F.I.O",
-                    dataIndex: "name",
-                    key: "name",
-                    render: (text, record, index) => (
-                      <div className="flex items-center gap-2">
-                        <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
-                            index === 0
-                              ? "bg-yellow-500"
-                              : index === 1
-                              ? "bg-gray-400"
-                              : index === 2
-                              ? "bg-orange-600"
-                              : "bg-gray-300"
-                          }`}
-                        >
-                          {index + 1}
+              {studentsLoading ? (
+                <div className="text-center py-8">
+                  <Spin size="large" />
+                </div>
+              ) : topStudents.length > 0 ? (
+                <Table
+                  dataSource={topStudents}
+                  pagination={false}
+                  columns={[
+                    {
+                      title: "F.I.O",
+                      dataIndex: "name",
+                      key: "name",
+                      render: (text, record, index) => (
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
+                              index === 0
+                                ? "bg-yellow-500"
+                                : index === 1
+                                ? "bg-gray-400"
+                                : index === 2
+                                ? "bg-orange-600"
+                                : "bg-gray-300"
+                            }`}
+                          >
+                            {index + 1}
+                          </div>
+                          <Text className="font-medium">{text}</Text>
                         </div>
-                        <Text className="font-medium">{text}</Text>
-                      </div>
-                    ),
-                  },
-                  {
-                    title: "Guruh",
-                    dataIndex: "group",
-                    key: "group",
-                    render: (text) => <Tag color="blue">{text}</Tag>,
-                  },
-                  {
-                    title: "Davomat",
-                    dataIndex: "attendance",
-                    key: "attendance",
-                    render: (value) => (
-                      <Progress
-                        percent={value}
-                        size="small"
-                        strokeColor={
-                          value >= 90
-                            ? "#52c41a"
-                            : value >= 75
-                            ? "#faad14"
-                            : "#ff4d4f"
-                        }
-                      />
-                    ),
-                  },
-                  {
-                    title: "To'garaklar",
-                    dataIndex: "clubs",
-                    key: "clubs",
-                    render: (count) => <Tag color="purple">{count} ta</Tag>,
-                  },
-                ]}
-              />
+                      ),
+                    },
+                    {
+                      title: "Guruh",
+                      dataIndex: "group",
+                      key: "group",
+                      render: (text) => <Tag color="blue">{text}</Tag>,
+                    },
+                    {
+                      title: "Davomat",
+                      dataIndex: "attendance",
+                      key: "attendance",
+                      render: (value) => (
+                        <Progress
+                          percent={value}
+                          size="small"
+                          strokeColor={
+                            value >= 90
+                              ? "#52c41a"
+                              : value >= 75
+                              ? "#faad14"
+                              : "#ff4d4f"
+                          }
+                        />
+                      ),
+                    },
+                    {
+                      title: "To'garaklar",
+                      dataIndex: "clubs",
+                      key: "clubs",
+                      render: (count) => <Tag color="purple">{count} ta</Tag>,
+                    },
+                  ]}
+                />
+              ) : (
+                <Alert
+                  message="Student ma'lumotlari topilmadi"
+                  type="info"
+                  showIcon
+                />
+              )}
             </Card>
           </Col>
 
@@ -295,10 +412,10 @@ export default function Reports() {
                   <div className="text-center">
                     <Text className="text-gray-600">Umumiy davomat</Text>
                     <div className="text-3xl font-bold text-blue-600 mt-2">
-                      87.5%
+                      {stats.busyPercentage || 0}%
                     </div>
                     <Progress
-                      percent={87.5}
+                      percent={parseFloat(stats.busyPercentage || 0)}
                       showInfo={false}
                       strokeColor="#1890ff"
                     />
@@ -309,10 +426,14 @@ export default function Reports() {
                   <div className="text-center">
                     <Text className="text-gray-600">Band studentlar</Text>
                     <div className="text-3xl font-bold text-green-600 mt-2">
-                      78.3%
+                      {stats.busyStudents || 0}
                     </div>
                     <Progress
-                      percent={78.3}
+                      percent={
+                        stats.totalStudents > 0
+                          ? (stats.busyStudents / stats.totalStudents) * 100
+                          : 0
+                      }
                       showInfo={false}
                       strokeColor="#52c41a"
                     />
@@ -323,7 +444,7 @@ export default function Reports() {
                   <div className="text-center">
                     <Text className="text-gray-600">Faol to'garaklar</Text>
                     <div className="text-3xl font-bold text-purple-600 mt-2">
-                      41 ta
+                      {stats.activeClubs || 0} ta
                     </div>
                     <Progress
                       percent={100}

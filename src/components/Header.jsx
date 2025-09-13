@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { Layout, Button, Dropdown, Avatar, Space, Badge } from "antd";
+import { Layout, Button, Dropdown, Avatar, Space, Badge, message } from "antd";
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
@@ -11,7 +11,6 @@ import {
 } from "@ant-design/icons";
 import { logout } from "../store/api/authApi";
 import { useSyncHemisDataMutation } from "../store/api/adminApi";
-import { message } from "antd";
 
 const { Header: AntHeader } = Layout;
 
@@ -31,10 +30,21 @@ export default function Header({ collapsed, setCollapsed }) {
     try {
       const result = await syncHemis().unwrap();
       if (result.success) {
-        message.success(result.message || "Hemis ma'lumotlari sinxronlandi");
+        message.success(
+          result.data?.message ||
+            result.message ||
+            "Hemis ma'lumotlari sinxronlandi"
+        );
+      } else {
+        message.error("Sinxronlashda xatolik yuz berdi");
       }
     } catch (error) {
-      message.error("Sinxronlashda xatolik yuz berdi");
+      console.error("Sync error:", error);
+      message.error(
+        error?.data?.message ||
+          error?.message ||
+          "Sinxronlashda xatolik yuz berdi"
+      );
     }
   };
 
@@ -71,14 +81,15 @@ export default function Header({ collapsed, setCollapsed }) {
           icon={<SyncOutlined spin={syncing} />}
           onClick={handleSync}
           loading={syncing}
+          disabled={syncing}
           className="gradient-primary border-0"
         >
-          Hemis Sync
+          {syncing ? "Sinxronlanmoqda..." : "Hemis Sync"}
         </Button>
       </div>
 
       <Space size="large">
-        <Badge count={5} size="small">
+        <Badge count={0} size="small">
           <Button
             type="text"
             shape="circle"
@@ -86,14 +97,23 @@ export default function Header({ collapsed, setCollapsed }) {
           />
         </Badge>
 
-        <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" arrow>
+        <Dropdown
+          menu={{ items: userMenuItems }}
+          placement="bottomRight"
+          arrow
+          trigger={["click"]}
+        >
           <Space className="cursor-pointer hover:bg-gray-50 px-3 py-1 rounded-lg transition-colors">
             <Avatar icon={<UserOutlined />} className="bg-primary" />
             <div className="text-left">
               <div className="font-medium">
                 {user?.profile?.fullName || user?.username}
               </div>
-              <div className="text-xs mt-[-20px] text-gray-500">Universitet Admin</div>
+              <div className="text-xs text-gray-500">
+                {user?.role === "university_admin"
+                  ? "Universitet Admin"
+                  : "Administrator"}
+              </div>
             </div>
           </Space>
         </Dropdown>

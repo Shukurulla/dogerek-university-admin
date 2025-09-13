@@ -12,6 +12,19 @@ export const baseApi = createApi({
       return headers;
     },
   }),
-  tagTypes: ["Admin", "Faculty", "Club", "Student", "Attendance", "Dashboard"],
+  tagTypes: [
+    "Dashboard",
+    "FacultyAdmin",
+    "Club",
+    "Student",
+    "Attendance",
+    "AttendanceReport",
+    "StudentAttendance",
+    "ClubAttendanceReport",
+    "Faculties",
+    "Groups",
+    "CommonFaculties",
+    "CommonGroups",
+  ],
   endpoints: () => ({}),
 });

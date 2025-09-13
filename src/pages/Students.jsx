@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Table,
   Card,
@@ -10,6 +10,7 @@ import {
   Typography,
   Tabs,
   Badge,
+  Alert,
 } from "antd";
 import {
   SearchOutlined,
@@ -18,13 +19,21 @@ import {
   GlobalOutlined,
   WarningOutlined,
 } from "@ant-design/icons";
-import { useGetStudentsQuery } from "../store/api/adminApi";
+import {
+  useGetStudentsQuery,
+  useGetFacultiesQuery,
+  useGetGroupsQuery,
+} from "../store/api/adminApi";
 import LoadingSpinner from "../components/LoadingSpinner";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
 
 export default function Students() {
+  const location = useLocation();
+  const navigate = useNavigate();
+
   const [filters, setFilters] = useState({
     facultyId: null,
     groupId: null,
@@ -34,9 +43,26 @@ export default function Students() {
     limit: 10,
   });
 
-  const { data, isLoading } = useGetStudentsQuery(filters);
+  // URL'dan filter parametrlarini olish
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const busyParam = searchParams.get("busy");
+    if (busyParam) {
+      setFilters((prev) => ({ ...prev, busy: busyParam }));
+    }
+  }, [location]);
+
+  const { data, isLoading, error } = useGetStudentsQuery(filters);
+  const { data: facultiesData, isLoading: facultiesLoading } =
+    useGetFacultiesQuery();
+  const { data: groupsData, isLoading: groupsLoading } = useGetGroupsQuery(
+    filters.facultyId
+  );
+
   const students = data?.data?.students || [];
   const pagination = data?.data?.pagination || {};
+  const faculties = facultiesData?.data || [];
+  const groups = groupsData?.data || [];
 
   const columns = [
     {
@@ -131,30 +157,36 @@ export default function Students() {
     },
   ];
 
-  // Mock data
-  const faculties = [
-    { id: 1, name: "Matematika fakulteti" },
-    { id: 2, name: "Fizika fakulteti" },
-    { id: 3, name: "Informatika fakulteti" },
-    { id: 4, name: "Tarix fakulteti" },
-  ];
-
-  const groups = [
-    { id: 1, name: "101-guruh" },
-    { id: 2, name: "102-guruh" },
-    { id: 3, name: "201-guruh" },
-    { id: 4, name: "301-guruh" },
-  ];
-
   const handleTabChange = (key) => {
-    setFilters((prev) => ({
-      ...prev,
+    const newFilters = {
+      ...filters,
       busy: key === "all" ? null : key,
       page: 1,
-    }));
+    };
+    setFilters(newFilters);
+
+    // URL'ni yangilash
+    const searchParams = new URLSearchParams();
+    if (key !== "all") {
+      searchParams.set("busy", key);
+    }
+    navigate({ search: searchParams.toString() }, { replace: true });
   };
 
-  if (isLoading) return <LoadingSpinner size="large" />;
+  if (isLoading || facultiesLoading) return <LoadingSpinner size="large" />;
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <Alert
+          message="Xatolik yuz berdi"
+          description={error.message || "Ma'lumotlarni yuklashda xatolik"}
+          type="error"
+          showIcon
+        />
+      </div>
+    );
+  }
 
   // Statistics
   const totalStudents = pagination.total || 0;
@@ -178,13 +210,18 @@ export default function Students() {
               placeholder="Fakultet"
               style={{ width: 180 }}
               allowClear
+              loading={facultiesLoading}
               onChange={(value) =>
-                setFilters((prev) => ({ ...prev, facultyId: value }))
+                setFilters((prev) => ({
+                  ...prev,
+                  facultyId: value,
+                  groupId: null,
+                }))
               }
             >
               {faculties.map((f) => (
                 <Select.Option key={f.id} value={f.id}>
-                  {f.name}
+                  {f.name} ({f.studentCount || 0} student)
                 </Select.Option>
               ))}
             </Select>
@@ -193,13 +230,15 @@ export default function Students() {
               placeholder="Guruh"
               style={{ width: 150 }}
               allowClear
+              loading={groupsLoading}
+              disabled={!filters.facultyId}
               onChange={(value) =>
                 setFilters((prev) => ({ ...prev, groupId: value }))
               }
             >
               {groups.map((g) => (
                 <Select.Option key={g.id} value={g.id}>
-                  {g.name}
+                  {g.name} ({g.studentCount || 0} student)
                 </Select.Option>
               ))}
             </Select>
@@ -209,7 +248,11 @@ export default function Students() {
               prefix={<SearchOutlined />}
               style={{ width: 200 }}
               onChange={(e) =>
-                setFilters((prev) => ({ ...prev, search: e.target.value }))
+                setFilters((prev) => ({
+                  ...prev,
+                  search: e.target.value,
+                  page: 1,
+                }))
               }
             />
           </Space>

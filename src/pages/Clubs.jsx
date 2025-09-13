@@ -7,10 +7,10 @@ import {
   Tag,
   Space,
   Typography,
-  Button,
   Avatar,
   Badge,
   Tooltip,
+  Alert,
 } from "antd";
 import {
   SearchOutlined,
@@ -21,7 +21,7 @@ import {
   ClockCircleOutlined,
   CalendarOutlined,
 } from "@ant-design/icons";
-import { useGetClubsQuery } from "../store/api/adminApi";
+import { useGetClubsQuery, useGetFacultiesQuery } from "../store/api/adminApi";
 import LoadingSpinner from "../components/LoadingSpinner";
 
 const { Title, Text } = Typography;
@@ -35,9 +35,13 @@ export default function Clubs() {
     limit: 10,
   });
 
-  const { data, isLoading } = useGetClubsQuery(filters);
+  const { data, isLoading, error } = useGetClubsQuery(filters);
+  const { data: facultiesData, isLoading: facultiesLoading } =
+    useGetFacultiesQuery();
+
   const clubs = data?.data?.clubs || [];
   const pagination = data?.data?.pagination || {};
+  const faculties = facultiesData?.data || [];
 
   const columns = [
     {
@@ -195,15 +199,20 @@ export default function Clubs() {
     },
   ];
 
-  // Mock faculties
-  const faculties = [
-    { id: 1, name: "Matematika fakulteti" },
-    { id: 2, name: "Fizika fakulteti" },
-    { id: 3, name: "Informatika fakulteti" },
-    { id: 4, name: "Tarix fakulteti" },
-  ];
+  if (isLoading || facultiesLoading) return <LoadingSpinner size="large" />;
 
-  if (isLoading) return <LoadingSpinner size="large" />;
+  if (error) {
+    return (
+      <div className="p-6">
+        <Alert
+          message="Xatolik yuz berdi"
+          description={error.message || "Ma'lumotlarni yuklashda xatolik"}
+          type="error"
+          showIcon
+        />
+      </div>
+    );
+  }
 
   // Statistics
   const totalClubs = pagination.total || 0;
@@ -228,13 +237,14 @@ export default function Clubs() {
               placeholder="Fakultet"
               style={{ width: 200 }}
               allowClear
+              loading={facultiesLoading}
               onChange={(value) =>
                 setFilters((prev) => ({ ...prev, facultyId: value, page: 1 }))
               }
             >
               {faculties.map((f) => (
                 <Select.Option key={f.id} value={f.id}>
-                  {f.name}
+                  {f.name} ({f.studentCount || 0} student)
                 </Select.Option>
               ))}
             </Select>

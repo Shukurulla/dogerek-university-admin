@@ -8,7 +8,6 @@ import {
   GlobalOutlined,
   WarningOutlined,
 } from "@ant-design/icons";
-import { Line, Bar, Pie } from "recharts";
 import { useGetDashboardQuery } from "../store/api/adminApi";
 import LoadingSpinner from "../components/LoadingSpinner";
 import React from "react";
@@ -19,10 +18,19 @@ export default function Dashboard() {
   const { data, isLoading, error } = useGetDashboardQuery();
 
   if (isLoading) return <LoadingSpinner size="large" />;
-  if (error)
+
+  if (error) {
     return (
-      <div className="text-center py-12 text-red-500">Xatolik yuz berdi</div>
+      <div className="text-center py-12">
+        <div className="text-red-500 text-lg mb-2">
+          Ma'lumotlarni yuklashda xatolik
+        </div>
+        <Text className="text-gray-500">
+          {error.message || "Server bilan aloqa yo'q"}
+        </Text>
+      </div>
     );
+  }
 
   const stats = data?.data || {};
 
@@ -118,8 +126,7 @@ export default function Dashboard() {
                   <div className="mt-3">
                     <Text strong>Band studentlar</Text>
                     <div className="text-2xl font-bold text-green-600">
-                      {stats.enrolledStudents + stats.externalCourseStudents ||
-                        0}
+                      {stats.busyStudents || 0}
                     </div>
                   </div>
                 </div>
@@ -150,7 +157,11 @@ export default function Dashboard() {
                       <Text strong>{stats.enrolledStudents || 0}</Text>
                     </div>
                     <Progress
-                      percent={70}
+                      percent={
+                        stats.totalStudents > 0
+                          ? (stats.enrolledStudents / stats.totalStudents) * 100
+                          : 0
+                      }
                       showInfo={false}
                       strokeColor="#1890ff"
                     />
@@ -162,7 +173,13 @@ export default function Dashboard() {
                       <Text strong>{stats.externalCourseStudents || 0}</Text>
                     </div>
                     <Progress
-                      percent={30}
+                      percent={
+                        stats.totalStudents > 0
+                          ? (stats.externalCourseStudents /
+                              stats.totalStudents) *
+                            100
+                          : 0
+                      }
                       showInfo={false}
                       strokeColor="#722ed1"
                     />
@@ -204,9 +221,9 @@ export default function Dashboard() {
                 <div className="flex items-center gap-3">
                   <ClockCircleOutlined className="text-2xl text-orange-500" />
                   <div>
-                    <Text className="block">Kutilayotgan</Text>
+                    <Text className="block">Fakultetlar</Text>
                     <Text strong className="text-xl">
-                      12
+                      {stats.facultiesCount || 0}
                     </Text>
                   </div>
                 </div>
@@ -224,7 +241,10 @@ export default function Dashboard() {
             bodyStyle={{ padding: 0 }}
           >
             <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x">
-              <button className="p-6 hover:bg-gray-50 transition-colors text-left">
+              <button
+                className="p-6 hover:bg-gray-50 transition-colors text-left"
+                onClick={() => window.open("/faculty-admins", "_self")}
+              >
                 <UserOutlined className="text-2xl text-blue-500 mb-3" />
                 <div className="font-medium">Fakultet admin qo'shish</div>
                 <Text className="text-gray-500">
@@ -232,7 +252,10 @@ export default function Dashboard() {
                 </Text>
               </button>
 
-              <button className="p-6 hover:bg-gray-50 transition-colors text-left">
+              <button
+                className="p-6 hover:bg-gray-50 transition-colors text-left"
+                onClick={() => window.open("/clubs", "_self")}
+              >
                 <BookOutlined className="text-2xl text-green-500 mb-3" />
                 <div className="font-medium">To'garaklar ro'yxati</div>
                 <Text className="text-gray-500">
@@ -240,7 +263,10 @@ export default function Dashboard() {
                 </Text>
               </button>
 
-              <button className="p-6 hover:bg-gray-50 transition-colors text-left">
+              <button
+                className="p-6 hover:bg-gray-50 transition-colors text-left"
+                onClick={() => window.open("/students?busy=false", "_self")}
+              >
                 <WarningOutlined className="text-2xl text-orange-500 mb-3" />
                 <div className="font-medium">Band bo'lmaganlar</div>
                 <Text className="text-gray-500">Faol bo'lmagan studentlar</Text>

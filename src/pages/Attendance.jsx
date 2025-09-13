@@ -8,6 +8,8 @@ import {
   Typography,
   Space,
   Badge,
+  Alert,
+  Empty,
 } from "antd";
 import {
   CalendarOutlined,
@@ -16,7 +18,7 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
 } from "@ant-design/icons";
-import { useGetAttendanceQuery } from "../store/api/adminApi";
+import { useGetAttendanceQuery, useGetClubsQuery } from "../store/api/adminApi";
 import LoadingSpinner from "../components/LoadingSpinner";
 import dayjs from "dayjs";
 
@@ -26,14 +28,21 @@ const { RangePicker } = DatePicker;
 export default function Attendance() {
   const [filters, setFilters] = useState({
     clubId: null,
-    date: null,
+    startDate: null,
+    endDate: null,
     page: 1,
     limit: 10,
   });
 
-  const { data, isLoading } = useGetAttendanceQuery(filters);
+  const { data, isLoading, error } = useGetAttendanceQuery(filters);
+  const { data: clubsData, isLoading: clubsLoading } = useGetClubsQuery({
+    page: 1,
+    limit: 100, // Get all clubs for filter
+  });
+
   const attendance = data?.data?.attendance || [];
   const pagination = data?.data?.pagination || {};
+  const clubs = clubsData?.data?.clubs || [];
 
   const columns = [
     {
@@ -138,31 +147,38 @@ export default function Attendance() {
     },
   ];
 
-  // Mock clubs
-  const clubs = [
-    { id: "1", name: "Web dasturlash" },
-    { id: "2", name: "Robototexnika" },
-    { id: "3", name: "Chess club" },
-    { id: "4", name: "English speaking" },
-  ];
-
   const handleDateChange = (dates) => {
     if (dates && dates.length === 2) {
       setFilters((prev) => ({
         ...prev,
         startDate: dates[0].format("YYYY-MM-DD"),
         endDate: dates[1].format("YYYY-MM-DD"),
+        page: 1,
       }));
     } else {
       setFilters((prev) => ({
         ...prev,
         startDate: null,
         endDate: null,
+        page: 1,
       }));
     }
   };
 
-  if (isLoading) return <LoadingSpinner size="large" />;
+  if (isLoading || clubsLoading) return <LoadingSpinner size="large" />;
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <Alert
+          message="Xatolik yuz berdi"
+          description={error.message || "Ma'lumotlarni yuklashda xatolik"}
+          type="error"
+          showIcon
+        />
+      </div>
+    );
+  }
 
   // Calculate statistics
   const totalSessions = attendance.length;
@@ -192,12 +208,13 @@ export default function Attendance() {
               placeholder="To'garak tanlang"
               style={{ width: 200 }}
               allowClear
+              loading={clubsLoading}
               onChange={(value) =>
-                setFilters((prev) => ({ ...prev, clubId: value }))
+                setFilters((prev) => ({ ...prev, clubId: value, page: 1 }))
               }
             >
               {clubs.map((club) => (
-                <Select.Option key={club.id} value={club.id}>
+                <Select.Option key={club._id} value={club._id}>
                   {club.name}
                 </Select.Option>
               ))}
@@ -247,21 +264,28 @@ export default function Attendance() {
           </Card>
         </div>
 
-        <Table
-          columns={columns}
-          dataSource={attendance}
-          rowKey="_id"
-          pagination={{
-            current: filters.page,
-            pageSize: filters.limit,
-            total: pagination.total,
-            showSizeChanger: true,
-            showTotal: (total) => `Jami: ${total} ta`,
-            onChange: (page, pageSize) =>
-              setFilters((prev) => ({ ...prev, page, limit: pageSize })),
-          }}
-          className="shadow-sm"
-        />
+        {attendance.length === 0 ? (
+          <Empty
+            description="Davomat ma'lumotlari topilmadi"
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+          />
+        ) : (
+          <Table
+            columns={columns}
+            dataSource={attendance}
+            rowKey="_id"
+            pagination={{
+              current: filters.page,
+              pageSize: filters.limit,
+              total: pagination.total,
+              showSizeChanger: true,
+              showTotal: (total) => `Jami: ${total} ta`,
+              onChange: (page, pageSize) =>
+                setFilters((prev) => ({ ...prev, page, limit: pageSize })),
+            }}
+            className="shadow-sm"
+          />
+        )}
       </Card>
     </div>
   );
