@@ -75,17 +75,6 @@ export default function Header({ collapsed, setCollapsed }) {
           onClick={() => setCollapsed(!collapsed)}
           className="text-lg"
         />
-
-        <Button
-          type="primary"
-          icon={<SyncOutlined spin={syncing} />}
-          onClick={handleSync}
-          loading={syncing}
-          disabled={syncing}
-          className="gradient-primary border-0"
-        >
-          {syncing ? "Sinxronlanmoqda..." : "Hemis Sync"}
-        </Button>
       </div>
 
       <Space size="large">
