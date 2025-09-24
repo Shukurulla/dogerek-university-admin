@@ -92,13 +92,13 @@ export default function Header({ collapsed, setCollapsed }) {
           arrow
           trigger={["click"]}
         >
-          <Space className="cursor-pointer hover:bg-gray-50 px-3 py-1 rounded-lg transition-colors">
+          <Space className="cursor-pointer hover:bg-gray-50  flex transition-colors">
             <Avatar icon={<UserOutlined />} className="bg-primary" />
             <div className="text-left">
-              <div className="font-medium">
+              <div className="font-medium mt-[-20px]">
                 {user?.profile?.fullName || user?.username}
               </div>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs mt-[-20px] text-gray-500">
                 {user?.role === "university_admin"
                   ? "Universitet Admin"
                   : "Administrator"}
