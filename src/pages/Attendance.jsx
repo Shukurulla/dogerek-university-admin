@@ -10,6 +10,10 @@ import {
   Badge,
   Alert,
   Empty,
+  Modal,
+  List,
+  Avatar,
+  Button,
 } from "antd";
 import {
   CalendarOutlined,
@@ -17,6 +21,8 @@ import {
   UserOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
+  EyeOutlined,
+  TeamOutlined,
 } from "@ant-design/icons";
 import { useGetAttendanceQuery, useGetClubsQuery } from "../store/api/adminApi";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -34,15 +40,27 @@ export default function Attendance() {
     limit: 10,
   });
 
+  const [detailsModal, setDetailsModal] = useState({
+    visible: false,
+    data: null,
+  });
+
   const { data, isLoading, error } = useGetAttendanceQuery(filters);
   const { data: clubsData, isLoading: clubsLoading } = useGetClubsQuery({
     page: 1,
-    limit: 100, // Get all clubs for filter
+    limit: 100,
   });
 
   const attendance = data?.data?.attendance || [];
   const pagination = data?.data?.pagination || {};
   const clubs = clubsData?.data?.clubs || [];
+
+  const showAttendanceDetails = (record) => {
+    setDetailsModal({
+      visible: true,
+      data: record,
+    });
+  };
 
   const columns = [
     {
@@ -128,22 +146,29 @@ export default function Attendance() {
       render: (text) => <Text className="text-gray-600">{text || "-"}</Text>,
     },
     {
-      title: "Telegram",
-      dataIndex: "telegramPostLink",
-      key: "telegram",
-      render: (link) =>
-        link ? (
-          <a
-            href={link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-500 hover:text-blue-600"
+      title: "Amallar",
+      key: "actions",
+      render: (_, record) => (
+        <Space>
+          <Button
+            type="primary"
+            icon={<EyeOutlined />}
+            onClick={() => showAttendanceDetails(record)}
           >
-            Post ko'rish
-          </a>
-        ) : (
-          <Text className="text-gray-400">-</Text>
-        ),
+            Batafsil
+          </Button>
+          {record.telegramPostLink && (
+            <a
+              href={record.telegramPostLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-500 hover:text-blue-600"
+            >
+              Telegram
+            </a>
+          )}
+        </Space>
+      ),
     },
   ];
 
@@ -287,6 +312,122 @@ export default function Attendance() {
           />
         )}
       </Card>
+
+      {/* Attendance Details Modal */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2">
+            <TeamOutlined />
+            <span>Davomat tafsilotlari</span>
+          </div>
+        }
+        open={detailsModal.visible}
+        onCancel={() => setDetailsModal({ visible: false, data: null })}
+        footer={null}
+        width={700}
+      >
+        {detailsModal.data && (
+          <div className="space-y-4">
+            <Card className="bg-gray-50">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Text className="text-gray-500">To'garak:</Text>
+                  <div className="font-medium">
+                    {detailsModal.data.club?.name}
+                  </div>
+                </div>
+                <div>
+                  <Text className="text-gray-500">Sana:</Text>
+                  <div className="font-medium">
+                    {dayjs(detailsModal.data.date).format("DD.MM.YYYY dddd")}
+                  </div>
+                </div>
+                <div>
+                  <Text className="text-gray-500">Tutor:</Text>
+                  <div className="font-medium">
+                    {detailsModal.data.markedBy?.profile?.fullName}
+                  </div>
+                </div>
+                <div>
+                  <Text className="text-gray-500">Jami studentlar:</Text>
+                  <div className="font-medium">
+                    {detailsModal.data.students?.length || 0} ta
+                  </div>
+                </div>
+              </div>
+              {detailsModal.data.notes && (
+                <div className="mt-4 pt-4 border-t">
+                  <Text className="text-gray-500">Izoh:</Text>
+                  <div className="mt-1">{detailsModal.data.notes}</div>
+                </div>
+              )}
+            </Card>
+
+            <div className="flex justify-between items-center">
+              <Title level={5} className="!mb-0">
+                Studentlar davomati
+              </Title>
+              <div className="flex gap-4">
+                <Tag color="success">
+                  Kelgan:{" "}
+                  {detailsModal.data.students?.filter((s) => s.present)
+                    .length || 0}
+                </Tag>
+                <Tag color="error">
+                  Kelmagan:{" "}
+                  {detailsModal.data.students?.filter((s) => !s.present)
+                    .length || 0}
+                </Tag>
+              </div>
+            </div>
+
+            <List
+              dataSource={detailsModal.data.students || []}
+              renderItem={(item) => (
+                <List.Item>
+                  <List.Item.Meta
+                    avatar={
+                      <Avatar
+                        src={item.student?.image}
+                        icon={!item.student?.image && <UserOutlined />}
+                        className={item.present ? "bg-green-500" : "bg-red-500"}
+                      />
+                    }
+                    title={
+                      <div className="flex items-center gap-2">
+                        <Text strong>
+                          {item.student?.full_name || "Noma'lum"}
+                        </Text>
+                        {item.present ? (
+                          <Tag color="success" icon={<CheckCircleOutlined />}>
+                            Kelgan
+                          </Tag>
+                        ) : (
+                          <Tag color="error" icon={<CloseCircleOutlined />}>
+                            Kelmagan
+                          </Tag>
+                        )}
+                      </div>
+                    }
+                    description={
+                      <div className="space-y-1">
+                        <Text className="text-xs text-gray-500">
+                          ID: {item.student?.student_id_number}
+                        </Text>
+                        {item.reason && (
+                          <Text className="text-xs text-orange-600">
+                            Sabab: {item.reason}
+                          </Text>
+                        )}
+                      </div>
+                    }
+                  />
+                </List.Item>
+              )}
+            />
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

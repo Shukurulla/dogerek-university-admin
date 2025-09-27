@@ -8,6 +8,7 @@ import {
   CalendarOutlined,
   FileTextOutlined,
   SettingOutlined,
+  AppstoreOutlined,
 } from "@ant-design/icons";
 
 const { Sider } = Layout;
@@ -22,6 +23,11 @@ const menuItems = [
     key: "/faculty-admins",
     icon: <UserOutlined />,
     label: "Fakultet adminlar",
+  },
+  {
+    key: "/categories",
+    icon: <AppstoreOutlined />,
+    label: "Kategoriyalar",
   },
   {
     key: "/clubs",

@@ -5,6 +5,7 @@ import PrivateRoute from "./components/PrivateRoute";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import FacultyAdmins from "./pages/FacultyAdmins";
+import Categories from "./pages/Categories";
 import Clubs from "./pages/Clubs";
 import Students from "./pages/Students";
 import Attendance from "./pages/Attendance";
@@ -22,6 +23,7 @@ function App() {
         <Route element={<Layout />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/faculty-admins" element={<FacultyAdmins />} />
+          <Route path="/categories" element={<Categories />} />
           <Route path="/clubs" element={<Clubs />} />
           <Route path="/students" element={<Students />} />
           <Route path="/attendance" element={<Attendance />} />
