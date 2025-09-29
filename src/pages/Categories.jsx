@@ -275,7 +275,7 @@ export default function Categories() {
       key: "clubCount",
       width: 120,
       render: (count) => (
-        <Badge count={count} showZero>
+        <Badge showZero>
           <Tag>{count} ta</Tag>
         </Badge>
       ),
@@ -385,7 +385,7 @@ export default function Categories() {
           <Card className="border border-green-200 bg-green-50">
             <div className="flex items-center justify-between">
               <div>
-                <Text className="text-gray-600">Faol kategoriyalar</Text>
+                <Text className="text-gray-600">Kategoriyalar</Text>
                 <div className="text-2xl font-bold text-green-600 mt-1">
                   {categories.filter((c) => c.isActive).length}
                 </div>

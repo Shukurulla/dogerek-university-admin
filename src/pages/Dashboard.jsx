@@ -101,19 +101,21 @@ export default function Dashboard() {
 
   // Calculate percentages correctly
   const busyPercentage =
-    totalStudents > 0 ? Math.round((busyStudents / totalStudents) * 100) : 0;
+    totalStudents > 0 ? ((busyStudents / totalStudents) * 100).toFixed(2) : 0;
 
   const notBusyPercentage =
-    totalStudents > 0 ? Math.round((notBusyStudents / totalStudents) * 100) : 0;
+    totalStudents > 0
+      ? ((notBusyStudents / totalStudents) * 100).toFixed(2)
+      : 0;
 
   const enrolledPercentage =
     totalStudents > 0
-      ? Math.round((enrolledStudents / totalStudents) * 100)
+      ? ((enrolledStudents / totalStudents) * 100).toFixed(2)
       : 0;
 
   const externalPercentage =
     totalStudents > 0
-      ? Math.round((externalCourseStudents / totalStudents) * 100)
+      ? ((externalCourseStudents / totalStudents) * 100).toFixed(2)
       : 0;
 
   return (
@@ -150,7 +152,7 @@ export default function Dashboard() {
 
         <Col xs={24} sm={12} lg={6}>
           <StatCard
-            title="Faol to'garaklar"
+            title="To'garaklar"
             value={stats.activeClubs || 0}
             icon={<BookOutlined />}
             color="#52c41a"
@@ -180,7 +182,7 @@ export default function Dashboard() {
       </Row>
 
       <Row gutter={[16, 16]}>
-        <Col xs={24} lg={16}>
+        <Col xs={24} lg={24}>
           <Card
             title={
               <div className="flex items-center gap-2">
@@ -303,63 +305,6 @@ export default function Dashboard() {
                 </Text>
               </div>
             )}
-          </Card>
-        </Col>
-
-        <Col xs={24} lg={8}>
-          <Card title="Bugungi faollik" className="shadow-md border-0 h-full">
-            <div className="space-y-6">
-              <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <CheckCircleOutlined className="text-2xl text-blue-500" />
-                  <div>
-                    <Text className="block">Bugungi darslar</Text>
-                    <Text strong className="text-xl">
-                      {stats.todayAttendance || 0}
-                    </Text>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <GlobalOutlined className="text-2xl text-green-500" />
-                  <div>
-                    <Text className="block">Faol to'garaklar</Text>
-                    <Text strong className="text-xl">
-                      {stats.activeClubs || 0}
-                    </Text>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between p-4 bg-orange-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <ClockCircleOutlined className="text-2xl text-orange-500" />
-                  <div>
-                    <Text className="block">Fakultetlar</Text>
-                    <Text strong className="text-xl">
-                      {stats.facultiesCount || 0}
-                    </Text>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <WarningOutlined className="text-2xl text-purple-500" />
-                  <div>
-                    <Text className="block">Fakultetlararo</Text>
-                    <Text strong className="text-xl">
-                      {stats.crossFacultyEnrollments || 0}
-                    </Text>
-                    <Text className="text-xs text-gray-500 block">
-                      boshqa fakultet to'garaklarida
-                    </Text>
-                  </div>
-                </div>
-              </div>
-            </div>
           </Card>
         </Col>
       </Row>

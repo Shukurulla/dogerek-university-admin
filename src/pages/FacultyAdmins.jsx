@@ -267,7 +267,7 @@ export default function FacultyAdmins() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <Card className="border border-blue-200 bg-blue-50">
             <div className="flex items-center justify-between">
               <div>
@@ -283,7 +283,7 @@ export default function FacultyAdmins() {
           <Card className="border border-green-200 bg-green-50">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-gray-600 text-sm">Faol adminlar</div>
+                <div className="text-gray-600 text-sm">Adminlar</div>
                 <div className="text-2xl font-bold text-green-600 mt-1">
                   {admins.filter((a) => a.isActive !== false).length}
                 </div>
@@ -301,18 +301,6 @@ export default function FacultyAdmins() {
                 </div>
               </div>
               <BankOutlined className="text-3xl text-purple-400" />
-            </div>
-          </Card>
-
-          <Card className="border border-orange-200 bg-orange-50">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-gray-600 text-sm">Nofaol adminlar</div>
-                <div className="text-2xl font-bold text-orange-600 mt-1">
-                  {admins.filter((a) => a.isActive === false).length}
-                </div>
-              </div>
-              <UserOutlined className="text-3xl text-orange-400" />
             </div>
           </Card>
         </div>

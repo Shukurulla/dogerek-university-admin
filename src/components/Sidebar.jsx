@@ -10,6 +10,7 @@ import {
   SettingOutlined,
   AppstoreOutlined,
 } from "@ant-design/icons";
+import { logo } from "../../public";
 
 const { Sider } = Layout;
 
@@ -73,7 +74,14 @@ export default function Sidebar({ collapsed }) {
             collapsed ? "text-xl" : "text-2xl"
           }`}
         >
-          {collapsed ? "D" : "Dogerek"}
+          {collapsed ? (
+            "D"
+          ) : (
+            <div className="flex items-center justify-start gap-2">
+              <img src={logo} className="w-[50px] " alt="" />
+              <p>Dogerek</p>
+            </div>
+          )}
         </h1>
       </div>
 
