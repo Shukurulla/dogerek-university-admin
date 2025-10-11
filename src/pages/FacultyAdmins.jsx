@@ -420,7 +420,10 @@ export default function FacultyAdmins() {
                 option.children.toLowerCase().includes(input.toLowerCase())
               }
             >
-              {faculties.map((f) => (
+              {[
+                ...faculties,
+                { id: 999999999, name: "Boshqa", studentCount: 0 },
+              ].map((f) => (
                 <Select.Option key={f.id} value={f.id}>
                   {f.name} ({f.studentCount} student)
                 </Select.Option>
